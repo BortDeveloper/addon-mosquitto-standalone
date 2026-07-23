@@ -4,7 +4,9 @@
 # the cutover then is a pure auth-plugin swap (go-auth out,
 # builtin-security in), not a broker version jump. The Supervisor builds
 # this image LOCALLY on the host (local add-on, no registry push needed).
-FROM eclipse-mosquitto:2.1.2-alpine
+# Digest = MANIFEST-LIST digest of 2.1.2-alpine (architecture-independent;
+# pinning protects against silently overwritten mutable tags).
+FROM eclipse-mosquitto:2.1.2-alpine@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
 
 # jq: run.sh reads the add-on options from /data/options.json (logins,
 # migration_bridge). The container needs no other tooling.

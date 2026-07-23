@@ -87,6 +87,7 @@ if [[ -n "${SSH_IDENTITY:-}" ]]; then
   esac
 fi
 
+# shellcheck disable=SC2029  # arguments deliberately expand client-side (slugs/ports from deploy.conf)
 bssh() { ssh "${SSH_OPTS[@]}" "${BROKER_SSH}" "$@"; }
 
 # All Supervisor API calls run on the target host (that is where the
@@ -194,6 +195,7 @@ verify_retained() {
   pw="$(api_get_raw "${OLD_SLUG}" | jq -r --arg u "${VERIFY_LOGIN}" '.data.options.logins[] | select(.username == $u) | .password')" || return 1
   [[ -n "${pw}" ]] || { warn "login ${VERIFY_LOGIN} not found"; return 1; }
   count_retained() { # $1=port -> number of retained messages
+    # shellcheck disable=SC2029  # host/port deliberately expand client-side
     printf '%s\n' "${pw}" | ssh "${SSH_OPTS[@]}" "${VERIFY_SSH}" 'read -r PW;
       mosquitto_sub -h '"${broker_host}"' -p '"$1"' '"${VERIFY_TLS_ARGS:-}"' \
         -i retained-count-'"$1"' -u '"${VERIFY_LOGIN}"' -P "$PW" \

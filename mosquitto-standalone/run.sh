@@ -27,12 +27,24 @@ CONF=/data/mosquitto.conf
 PASSWD=/data/passwd
 umask 077
 
-CAFILE=$(jq -r '.cafile' "$OPTS")
-CERTFILE=$(jq -r '.certfile' "$OPTS")
-KEYFILE=$(jq -r '.keyfile' "$OPTS")
-ACLFILE=$(jq -r '.acl_file' "$OPTS")
+# tr -d '\n': embedded line breaks in option values would inject arbitrary
+# Mosquitto directives into the generated config — strip them defensively.
+CAFILE=$(jq -r '.cafile' "$OPTS" | tr -d '\n')
+CERTFILE=$(jq -r '.certfile' "$OPTS" | tr -d '\n')
+KEYFILE=$(jq -r '.keyfile' "$OPTS" | tr -d '\n')
+ACLFILE=$(jq -r '.acl_file' "$OPTS" | tr -d '\n')
 
+# Path check: the only allowed prefixes are /ssl/ and /share/ — the only
+# mapped volumes (config.yaml). If this fails, the value is either a typo
+# or an injection attempt.
+validate_ssl_or_share_path() {
+  case "$1" in
+    /ssl/*|/share/*) ;;
+    *) echo "[run.sh] ERROR: file path outside /ssl/ or /share/: $1" >&2; exit 1 ;;
+  esac
+}
 for f in "$CAFILE" "$CERTFILE" "$KEYFILE" "$ACLFILE"; do
+  validate_ssl_or_share_path "$f"
   [ -f "$f" ] || { echo "[run.sh] ERROR: file missing: $f" >&2; exit 1; }
 done
 
@@ -52,6 +64,9 @@ user root
 persistence true
 persistence_location /data/
 log_dest stdout
+# NOTE: as soon as ANY log_type is listed explicitly, all unlisted types
+# are disabled — without "error" here, error logging would be silently off.
+log_type error
 log_type warning
 log_type notice
 connection_messages true
@@ -62,6 +77,11 @@ connection_messages true
 # are being dropped", observed during the first deployment). Raise the
 # limit generously.
 max_queued_messages 10000
+
+# Resource limits: bound connection floods and pathologically large
+# messages (1 MiB is generous for typical home-automation payloads).
+max_connections 100
+message_size_limit 1048576
 
 listener 8883
 cafile $CAFILE
@@ -82,20 +102,26 @@ EOF
 # you get a self-bridge. deploy.sh --cutover therefore force-disables the
 # option BEFORE the host port changes.
 if [ "$(jq -r '.migration_bridge.enabled' "$OPTS")" = "true" ]; then
-  MB_ADDR=$(jq -r '.migration_bridge.address' "$OPTS")
-  MB_USER=$(jq -r '.migration_bridge.remote_username' "$OPTS")
-  MB_PW=$(jq -r --arg u "$MB_USER" '.logins[] | select(.username == $u) | .password' "$OPTS")
+  MB_ADDR=$(jq -r '.migration_bridge.address' "$OPTS" | tr -d '\n')
+  MB_USER=$(jq -r '.migration_bridge.remote_username' "$OPTS" | tr -d '\n')
+  MB_PW=$(jq -r --arg u "$MB_USER" '.logins[] | select(.username == $u) | .password' "$OPTS" | tr -d '\n')
   if [ -z "$MB_PW" ]; then
     echo "[run.sh] ERROR: migration_bridge.enabled, but login '$MB_USER' missing in logins" >&2
     exit 1
   fi
+  MB_BRIDGE_CAFILE=$(jq -r '.migration_bridge.bridge_cafile' "$OPTS" | tr -d '\n')
+  MB_BRIDGE_CERTFILE=$(jq -r '.migration_bridge.bridge_certfile' "$OPTS" | tr -d '\n')
+  MB_BRIDGE_KEYFILE=$(jq -r '.migration_bridge.bridge_keyfile' "$OPTS" | tr -d '\n')
+  for f in "$MB_BRIDGE_CAFILE" "$MB_BRIDGE_CERTFILE" "$MB_BRIDGE_KEYFILE"; do
+    validate_ssl_or_share_path "$f"
+  done
   cat >> "$CONF" <<EOF
 
 connection migration-oldbroker
 address $MB_ADDR
-bridge_cafile $(jq -r '.migration_bridge.bridge_cafile' "$OPTS")
-bridge_certfile $(jq -r '.migration_bridge.bridge_certfile' "$OPTS")
-bridge_keyfile $(jq -r '.migration_bridge.bridge_keyfile' "$OPTS")
+bridge_cafile $MB_BRIDGE_CAFILE
+bridge_certfile $MB_BRIDGE_CERTFILE
+bridge_keyfile $MB_BRIDGE_KEYFILE
 remote_username $MB_USER
 remote_password $MB_PW
 remote_clientid mosquitto-standalone-migration

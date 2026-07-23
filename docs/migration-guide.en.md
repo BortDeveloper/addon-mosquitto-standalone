@@ -7,6 +7,12 @@
 > seconds of downtime. All names, addresses, and topics are placeholders;
 > adapt them to your environment.
 > Deutsche Version: [migration-guide.de.md](migration-guide.de.md)
+>
+> ⚠ **Use at your own risk.** You are replacing the central MQTT broker of
+> your home automation. Test in parallel operation, verify before the
+> cutover, keep the rollback path. This worked for my installation and is
+> shared as is, **without any warranty** and with very limited support
+> capacity — you alone are responsible for your system.
 
 ## 1. The problem
 

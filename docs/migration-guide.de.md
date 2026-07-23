@@ -7,6 +7,13 @@
 > Retained-Messages und wenigen Sekunden Downtime. Alle Namen, Adressen und
 > Topics sind Platzhalter; passe sie an deine Umgebung an.
 > English version: [migration-guide.en.md](migration-guide.en.md)
+>
+> ⚠ **Nutzung auf eigene Gefahr.** Du ersetzt den zentralen MQTT-Broker
+> deiner Hausautomation. Teste im Parallelbetrieb, verifiziere vor dem
+> Cutover, halte den Rollback-Pfad bereit. Das Vorgehen hat bei meiner
+> Installation funktioniert und wird **ohne jede Garantie** und mit sehr
+> begrenzter Support-Kapazität geteilt — für dein System bist du allein
+> verantwortlich.
 
 ## 1. Das Problem
 

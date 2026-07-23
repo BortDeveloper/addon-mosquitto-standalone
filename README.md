@@ -13,6 +13,18 @@ via `password_file`, authorization via `acl_file` — both actually take
 effect. The add-on stays Supervisor-managed (backups, watchdog, lifecycle),
 unlike a raw Docker container, which HAOS marks as "unsupported".
 
+> ## ⚠ Disclaimer — use at your own risk
+>
+> This project replaces a core piece of your home automation infrastructure:
+> the MQTT broker. **Be careful.** Test in parallel operation, verify
+> thoroughly before the cutover, and keep the rollback path available.
+> This approach worked for *my* installation — it may not fit yours.
+> Everything here is provided **as is, without any warranty or guarantee
+> of any kind** (see [LICENSE](LICENSE)). I maintain this as a shared
+> workaround with very limited capacity: no promises on support, fixes,
+> or timely responses to issues or PRs. You alone are responsible for
+> changes to your system.
+
 **Migration:** the included deploy script orchestrates a low-risk switch:
 run the new broker in parallel on an alternate port, mirror the complete
 retained store via an MQTT bridge, verify (including an empirical ACL

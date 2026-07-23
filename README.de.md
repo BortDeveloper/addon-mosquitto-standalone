@@ -15,6 +15,18 @@ beides greift wirklich. Das Add-on bleibt Supervisor-verwaltet (Backups,
 Watchdog, Lebenszyklus), anders als ein roher Docker-Container, den HAOS
 als „unsupported" einstuft.
 
+> ## ⚠ Haftungsausschluss — Nutzung auf eigene Gefahr
+>
+> Dieses Projekt ersetzt ein Kernstück deiner Hausautomations-Infrastruktur:
+> den MQTT-Broker. **Sei vorsichtig.** Teste im Parallelbetrieb, verifiziere
+> gründlich vor dem Cutover und halte den Rollback-Pfad bereit. Der Ansatz
+> hat bei *meiner* Installation funktioniert — er muss nicht zu deiner
+> passen. Alles hier wird **ohne jede Garantie oder Gewährleistung**
+> bereitgestellt (siehe [LICENSE](LICENSE)). Ich pflege das als geteilten
+> Workaround mit sehr begrenzter Kapazität: keine Zusagen zu Support,
+> Fixes oder zeitnahen Reaktionen auf Issues/PRs. Für Änderungen an deinem
+> System bist du allein verantwortlich.
+
 **Migration:** Das mitgelieferte Deploy-Script orchestriert einen
 risikoarmen Umstieg: neuer Broker parallel auf einem Alternativ-Port,
 vollständige Übernahme des Retained-Bestands per MQTT-Bridge,

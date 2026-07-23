@@ -191,6 +191,36 @@ Downtime in der Praxis: ~10 Sekunden. MQTT-Clients reconnecten von selbst.
   starten und `boot=auto` setzen. Adresse/PKI unverändert → Clients
   reconnecten ebenso von selbst.
 
+### Phase 5 — Follow-up: privilegierte Clients auf Least-Privilege-Logins umziehen
+
+Der Cutover macht die ACL *durchsetzbar* — aber jeder Client, der noch
+einen breiten `readwrite #`-Login nutzt, wird von ihr weiterhin nicht
+eingeschränkt. Der übliche Kandidat ist die **HA-MQTT-Integration**
+selbst, die historisch oft denselben „Superuser"-Login teilt, über den
+auch die Automatisierungslogik läuft. Sie auf einen eigenen Login
+umzuziehen (z. B. `read #` plus explizit aufgezählte write-Topics für
+Statestream/Birth und die wenigen direkt publizierenden
+Dashboard-Taster) ist der Schritt, mit dem die ACL für die exponierteste
+Komponente wirklich greift.
+
+Praxis-Hinweise:
+
+- Die Zugangsdaten der Integration liegen in
+  `/config/.storage/core.config_entries`. Datei sichern, nur den
+  betroffenen Eintrag editieren (Username/Passwort), JSON validieren,
+  dann `ha core restart`. (Der Reconfigure-Dialog der UI geht auch.)
+- Im Broker-Log prüfen, dass die Integration mit dem neuen Login
+  reconnectet (`u'<neuer-login>'`) und keine `not authorised`-Zeilen
+  auftauchen.
+- Nicht vergessen: **ACL-Drops sind stumm.** Wurde ein Schreibpfad in der
+  Bestandsaufnahme übersehen, hört der betroffene Taster/die
+  Automatisierung einfach auf zu funktionieren — das ist das Signal, eine
+  bewusste ACL-Regel dafür zu ergänzen (und der Grund, warum jedes neue
+  direkt publizierende Dashboard-Element eine brauchen sollte).
+- Bei der Verifikation nicht vom Birth-Topic täuschen lassen: die
+  Birth-Message der Integration ist per Default **nicht retained** — ein
+  nachträglicher Subscribe zeigt nichts, selbst wenn alles funktioniert.
+
 ## 4. Teststrategie: Messen ohne sich selbst zu täuschen
 
 Diese Punkte haben sich als entscheidend erwiesen:

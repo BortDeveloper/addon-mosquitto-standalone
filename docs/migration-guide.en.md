@@ -188,6 +188,33 @@ Downtime in practice: ~10 seconds. MQTT clients reconnect by themselves.
   old add-on and set `boot=auto`. Address/PKI unchanged → clients
   reconnect on their own again.
 
+### Phase 5 — Follow-up: move privileged clients to least-privilege logins
+
+The cutover makes the ACL *enforceable* — but any client that still uses
+a broad `readwrite #` login is not yet restricted by it. The usual
+suspect is the **Home Assistant MQTT integration** itself, which
+historically often shares the "superuser" login that also drives the main
+automation logic. Moving it to its own login (e.g. `read #` plus
+explicitly enumerated write topics for statestream/birth and the few
+dashboard buttons that publish directly) is what makes the ACL actually
+bite for the most exposed component.
+
+Practical notes:
+
+- The integration's credentials live in
+  `/config/.storage/core.config_entries`. Back the file up, edit only the
+  affected entry (username/password), validate the JSON, then
+  `ha core restart`. (The UI's reconfigure dialog works too.)
+- Verify in the broker log that the integration reconnects with the new
+  login (`u'<new-login>'`) and that no `not authorised` lines appear.
+- Remember: **ACL drops are silent.** If a write path was missed in your
+  inventory, the affected button/automation simply stops working — that
+  is your cue to add a deliberate ACL rule for it (and the reason every
+  new direct-publishing dashboard element should require one).
+- Don't be misled when verifying against the birth topic: the
+  integration's birth message is **not retained** by default, so
+  subscribing after the fact shows nothing even when everything works.
+
 ## 4. Test strategy: measuring without fooling yourself
 
 These points turned out to be decisive:

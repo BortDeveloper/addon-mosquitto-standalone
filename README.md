@@ -77,8 +77,10 @@ their own because the address and PKI stay the same.
 ## Status
 
 Deployed and verified in production on HAOS (2026): complete retained
-takeover, all clients reconnected, ACL negative test passing. See the
-migration guide for the measurement methodology and pitfalls.
+takeover, all clients reconnected, ACL negative test passing — including
+the follow-up of moving the HA MQTT integration off the superuser login
+onto a least-privilege login (guide, phase 5). See the migration guide
+for the measurement methodology and pitfalls.
 
 ## License
 

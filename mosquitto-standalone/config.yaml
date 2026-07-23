@@ -1,0 +1,95 @@
+# Mosquitto Standalone — a local HA add-on running stock Mosquitto.
+#
+# WHY a custom add-on instead of the official Mosquitto add-on:
+# The official add-on (>= 7.0, Mosquitto 2.1) does not enforce file ACLs —
+# its go-auth plugin answers acl checks BEFORE the builtin-security plugin
+# and allows everything for any valid login (upstream bug
+# home-assistant/addons#4571). This add-on loads NO go-auth: stock
+# Mosquitto with password_file + acl_file — the ACL actually takes effect.
+# Full walkthrough: docs/migration-guide.en.md
+#
+# WHY a local add-on instead of a raw Docker container: HAOS marks foreign
+# containers as "unsupported"; an add-on stays Supervisor-managed
+# (backups, watchdog, clean start/stop) while still being an ordinary
+# container with our configuration.
+name: Mosquitto Standalone
+version: "1.0.1"
+slug: mosquitto_standalone
+description: >-
+  Stock Mosquitto (mTLS, password_file, acl_file) replacing the official
+  Mosquitto add-on, whose file ACL is not enforced (#4571).
+url: https://github.com/home-assistant/addons/issues/4571
+arch:
+  - amd64
+# No HA base image, no s6 — we start /run.sh directly (CMD in Dockerfile).
+init: false
+startup: system
+# boot stays "manual" until the cutover is complete — otherwise TWO
+# brokers compete for port 8883 after a host reboot. deploy.sh --cutover
+# sets: old add-on boot=manual, this add-on boot=auto.
+boot: manual
+# Inside the container Mosquitto always listens on 8883 (mTLS, no
+# plaintext listener). The HOST port is 18883 for parallel operation
+# during the migration; the cutover remaps it to 8883 via the Supervisor
+# API. Clients notice nothing (address + PKI stay the same).
+ports:
+  8883/tcp: 18883
+ports_description:
+  8883/tcp: MQTT over mTLS (require_certificate)
+# Watchdog: the Supervisor probes the mapped host port and restarts the
+# add-on on hangs. Template syntax: [PORT:<container-port>] WITHOUT a
+# /tcp suffix — the Supervisor validator rejects "[PORT:8883/tcp]".
+watchdog: tcp://[HOST]:[PORT:8883]
+map:
+  # /ssl: broker certificates + the migration bridge's client certificate
+  # (read-only).
+  - ssl:ro
+  # /share: the acl_file (maintained by your existing ACL deploy process;
+  # this add-on only consumes it, read-only).
+  - share:ro
+options:
+  # TLS material for the listener — adapt to your PKI layout.
+  cafile: /ssl/mosquitto/ca.crt
+  certfile: /ssl/mosquitto/broker.crt
+  keyfile: /ssl/mosquitto/broker.key
+  # File ACL — external single source of truth. After changing it,
+  # restart this add-on (no SIGHUP, see run.sh).
+  acl_file: /share/mosquitto/accesscontrollist
+  # Broker logins, same shape as the official add-on's option.
+  # deploy.sh --install copies them server-side via the Supervisor API —
+  # passwords never leave the host. run.sh turns them into a hashed
+  # password_file (mosquitto_passwd -U).
+  logins: []
+  # Migration bridge: while enabled, THIS broker connects as a bridge
+  # CLIENT to the old broker (address) and imports all topics including
+  # retained ones ("topic # in 0") — the complete retained store migrates
+  # losslessly. Auth: client certificate (bridge_*) + login
+  # remote_username (password is looked up in the logins list).
+  # NOTE: the certificate must be verifiable by the old broker WITHOUT a
+  # missing intermediate — use a cert signed directly by your client CA,
+  # or a full-chain PEM.
+  # !! BEFORE remapping the host port to 8883, enabled MUST be false —
+  # otherwise the broker connects to itself (echo loop). deploy.sh
+  # --cutover enforces the order.
+  migration_bridge:
+    enabled: false
+    address: 192.168.1.2:8883
+    remote_username: admin
+    bridge_cafile: /ssl/mosquitto/ca.crt
+    bridge_certfile: /ssl/client.crt
+    bridge_keyfile: /ssl/client.key
+schema:
+  cafile: str
+  certfile: str
+  keyfile: str
+  acl_file: str
+  logins:
+    - username: str
+      password: password
+  migration_bridge:
+    enabled: bool
+    address: str
+    remote_username: str
+    bridge_cafile: str
+    bridge_certfile: str
+    bridge_keyfile: str

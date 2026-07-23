@@ -1,0 +1,2 @@
+# Real deploy targets, keys, secrets — stay local.
+.local/

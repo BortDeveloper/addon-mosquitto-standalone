@@ -1,0 +1,5 @@
+# shellcheck configuration (gate: CI):
+# SC2029: remote commands deliberately expand client-side (paths/slugs
+#         from deploy.conf); secrets never travel via argv.
+# SC2016: literal '$' patterns in jq/awk programs are intentional.
+disable=SC2029,SC2016

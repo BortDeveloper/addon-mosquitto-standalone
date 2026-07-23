@@ -1,0 +1,21 @@
+# Template for .local/deploy.conf (gitignored — real targets/keys never
+# enter the repo).
+#
+# Prerequisites on the target host (HAOS with the SSH add-on):
+#   - ha CLI + jq available (the official SSH add-on ships both)
+#   - /addons writable (mapping of the SSH add-on)
+
+# SSH target: the HAOS host that should run the add-on
+BROKER_SSH="root@homeassistant.local"
+
+# Dedicated deploy key (IdentitiesOnly=yes). Absolute path, or relative
+# to the repo root.
+SSH_IDENTITY=".local/ssh/id_ed25519"
+
+# Optional: a host with mosquitto-clients + a valid client certificate
+# for the retained comparison during the migration (empty = check off).
+# VERIFY_LOGIN must be a login with 'read #' in the ACL; its password is
+# looked up server-side in the old add-on's options.
+VERIFY_SSH=""
+VERIFY_LOGIN=""
+VERIFY_TLS_ARGS="--cafile /path/ca.crt --cert /path/client.crt --key /path/client.key"

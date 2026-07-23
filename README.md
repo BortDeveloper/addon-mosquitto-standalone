@@ -82,6 +82,14 @@ the follow-up of moving the HA MQTT integration off the superuser login
 onto a least-privilege login (guide, phase 5). See the migration guide
 for the measurement methodology and pitfalls.
 
+Since v1.0.2/v1.0.3 the add-on is defensively hardened: option values are
+sanitized before config generation and file paths restricted to the
+mapped volumes, the broker gets resource limits
+(`max_connections`, `message_size_limit`, `max_queued_bytes`), the base
+image is pinned to a manifest-list digest, CI actions are pinned to
+release-tag SHAs, and CI scans both the Dockerfile configuration and the
+built image for CVEs (gated on CRITICAL).
+
 ## License
 
 [MIT](LICENSE)

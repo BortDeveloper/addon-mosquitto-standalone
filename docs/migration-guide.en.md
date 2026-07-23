@@ -110,6 +110,18 @@ wildcards when the retained store is large (several thousand messages) —
 observed as `Outgoing messages are being dropped for client …`. Size it
 generously for installations with many retained topics (e.g. `10000`).
 
+**Defensive hardening.** Strip line breaks from every option value that
+is interpolated into the generated `mosquitto.conf` and restrict
+file-path options to the mapped volumes (`/ssl`, `/share`) — an embedded
+newline would otherwise inject arbitrary broker directives. Give the
+broker resource limits (`max_connections`, `message_size_limit`,
+`max_queued_bytes` as a byte cap complementing `max_queued_messages`).
+Pin the base image to its manifest-list digest and CI actions to
+release-tag commit SHAs; let CI scan both the Dockerfile configuration
+and the built image for CVEs — gated on CRITICAL only, since the digest
+pin freezes the CVE baseline and a red CI should mean "time for a
+deliberate base-image bump".
+
 ## 3. Migration strategy: build in parallel, verify, then switch
 
 The migration splits into phases that are individually risk-free and can
@@ -258,6 +270,7 @@ from a single measurement host.
 | Bridge client certificate with intermediate CA | Old broker logs `certificate verify failed`, bridge never connects | Use a certificate signed directly by the client CA, or the full chain (leaf + intermediate) as `bridge_certfile` |
 | Windows development: CRLF | `run.sh` with a CRLF shebang does not start in the Alpine container | `.gitattributes` with `* text=auto eol=lf` from the start |
 | `per_listener_settings` | Deprecation warning (Mosquitto 2.1) | Omit the option |
+| Explicit `log_type` list | Error messages silently missing from the broker log | Include `log_type error` — listing any `log_type` disables all unlisted types |
 | Silent failure of the store reload | Local add-on never appears in the store | Read the Supervisor log: validation errors are listed there with file and reason |
 
 ## 6. Limitations / residual risks

@@ -112,6 +112,19 @@ der Retained-Flut, wenn ein Client breite Wildcards abonniert — beobachtet
 als `Outgoing messages are being dropped for client …`. Für Installationen
 mit vielen Retained-Topics großzügig dimensionieren (z. B. `10000`).
 
+**Defensive Härtung.** Alle Option-Werte, die in die generierte
+`mosquitto.conf` interpoliert werden, von Zeilenumbrüchen befreien und
+Datei-Pfad-Optionen auf die gemappten Volumes (`/ssl`, `/share`)
+beschränken — ein eingebetteter Newline würde sonst beliebige
+Broker-Direktiven injizieren. Dem Broker Ressourcen-Grenzen geben
+(`max_connections`, `message_size_limit`, `max_queued_bytes` als
+Byte-Deckel zur `max_queued_messages`-Zahl). Basis-Image auf den
+Manifest-List-Digest und CI-Actions auf Release-Tag-SHAs pinnen; die CI
+sowohl die Dockerfile-Konfiguration als auch das gebaute Image auf CVEs
+scannen lassen — Gate nur auf CRITICAL, denn der Digest-Pin friert den
+CVE-Stand ein und eine rote CI soll heißen: „Zeit für einen bewussten
+Basis-Image-Bump".
+
 ## 3. Migrationsstrategie: parallel aufbauen, verifizieren, dann umschalten
 
 Der gesamte Umstieg gliedert sich in Phasen, die einzeln risikolos sind
@@ -265,6 +278,7 @@ Positivtests von einem einzigen Messhost fahren.
 | Bridge-Client-Zertifikat mit Zwischen-CA | Alt-Broker loggt `certificate verify failed`, Bridge verbindet nie | Ein direkt von der Client-CA signiertes Zertifikat verwenden oder die volle Kette (Leaf+Intermediate) als `bridge_certfile` |
 | Windows-Entwicklung: CRLF | `run.sh` mit CRLF-Shebang startet im Alpine-Container nicht | `.gitattributes` mit `* text=auto eol=lf` von Anfang an |
 | `per_listener_settings` | Deprecation-Warnung (Mosquitto 2.1) | Option weglassen |
+| Explizite `log_type`-Liste | Error-Meldungen fehlen stumm im Broker-Log | `log_type error` mit aufnehmen — jede explizite `log_type`-Liste deaktiviert alle ungenannten Typen |
 | Silent-Fail des Store-Reloads | Lokales Add-on erscheint nie im Store | Supervisor-Log lesen: Validierungsfehler stehen dort mit Datei und Grund |
 
 ## 6. Grenzen / Restrisiken

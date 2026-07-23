@@ -1,0 +1,7 @@
+# DS-0002 "Specify at least 1 USER command with non-root user":
+# Running Mosquitto as root is a DELIBERATE, documented decision (see
+# run.sh header): TLS keys and the ACL file are 600 root:root and the
+# add-on data dir is root-owned — a privilege drop would break persistence
+# and file access. The official HA Mosquitto add-on runs as root for the
+# same reason.
+AVD-DS-0002

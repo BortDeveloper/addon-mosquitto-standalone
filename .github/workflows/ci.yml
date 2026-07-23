@@ -44,3 +44,6 @@ jobs:
           scan-ref: mosquitto-standalone/
           exit-code: '1'
           severity: HIGH,CRITICAL
+          # DS-0002 (non-root USER) is a deliberate exception — rationale
+          # in .trivyignore and the run.sh header.
+          trivyignores: .trivyignore

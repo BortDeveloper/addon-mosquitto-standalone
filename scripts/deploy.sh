@@ -78,7 +78,9 @@ source "${CONFIG_FILE}"
 [[ -n "${BROKER_SSH:-}" ]] || { err "BROKER_SSH missing in ${CONFIG_FILE}"; exit 1; }
 [[ -d "${REPO_ROOT}/${ADDON_DIRNAME}" ]] || { err "Add-on source missing: ${REPO_ROOT}/${ADDON_DIRNAME}"; exit 1; }
 
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o IdentitiesOnly=yes)
+# Explicit StrictHostKeyChecking=yes: unknown OR changed host keys abort
+# hard (BatchMode alone only covers the unknown-host case).
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes)
 if [[ -n "${SSH_IDENTITY:-}" ]]; then
   # Absolute paths are taken as-is, relative ones resolve against the repo root.
   case "${SSH_IDENTITY}" in

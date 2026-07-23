@@ -47,3 +47,22 @@ jobs:
           # DS-0002 (non-root USER) is a deliberate exception — rationale
           # in .trivyignore and the run.sh header.
           trivyignores: .trivyignore
+
+  # CVE scan of the built image. Gate deliberately on CRITICAL only: the
+  # digest pin freezes the CVE baseline; newly discovered CRITICALs turn
+  # CI red and force a DELIBERATE base-image bump — HIGH findings in
+  # Alpine packages would just cause constant flakiness.
+  trivy-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - name: build add-on image
+        run: docker build -t mosquitto-standalone:ci mosquitto-standalone/
+      - name: trivy CVE scan (CRITICAL gate)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          scan-type: image
+          image-ref: mosquitto-standalone:ci
+          exit-code: '1'
+          severity: CRITICAL
+          trivyignores: .trivyignore

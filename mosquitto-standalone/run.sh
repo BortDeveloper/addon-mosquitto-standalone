@@ -82,6 +82,10 @@ max_queued_messages 10000
 # messages (1 MiB is generous for typical home-automation payloads).
 max_connections 100
 message_size_limit 1048576
+# Byte cap complementing max_queued_messages (10000 x 1 MiB would allow
+# a theoretical 10 GiB queue); 32 MiB sits far above a typical retained
+# flood of a few hundred KB.
+max_queued_bytes 33554432
 
 listener 8883
 cafile $CAFILE

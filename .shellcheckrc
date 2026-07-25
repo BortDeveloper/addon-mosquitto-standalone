@@ -1,6 +1,6 @@
 # shellcheck configuration (gate: CI):
 # SC2016: literal '$' patterns in jq/awk programs are intentional.
 # SC2029 (remote commands deliberately expanded client-side) is NOT
-#        disabled globally anymore — per-site comments at the two direct
-#        ssh call sites in deploy.sh (bssh, count_retained) instead.
+#        disabled globally anymore — per-site comments at the direct ssh
+#        call sites in deploy.sh (bssh, count_retained, acl_count) instead.
 disable=SC2016

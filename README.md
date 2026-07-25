@@ -62,17 +62,35 @@ mTLS PKI if you run `require_certificate` (paths are add-on options).
 ```bash
 cp deploy.conf.example .local/deploy.conf   # then edit
 ./scripts/deploy.sh                          # status of both add-ons
-./scripts/deploy.sh --install --apply        # build + run in parallel on :18883
+./scripts/deploy.sh --install --with-bridge --apply  # migration: build + run
+                                             # in parallel on :18883, bridge armed
+./scripts/deploy.sh --install --apply        # re-run/repair WITHOUT the bridge
+./scripts/deploy.sh --update --apply         # roll out a new add-on version
 ./scripts/deploy.sh --cutover                # review the cutover plan
 ./scripts/deploy.sh --cutover --apply        # take over the production port
 ./scripts/deploy.sh --rollback --apply       # back to the official add-on
+./scripts/deploy.sh --verify-acl             # ACL enforcement proof (anytime)
 ```
 
 Every phase is a dry run unless you add `--apply`. **Install** is
 harmless: the new broker runs in parallel, the old one is untouched, and
 logins are copied server-side via the Supervisor API (passwords never
-leave the host). **Cutover** costs ~10 seconds; clients reconnect on
-their own because the address and PKI stay the same.
+leave the host). The migration bridge is armed **only** with
+`--with-bridge` (and only while the old broker is actually running) — a
+fail-safe default, so re-running `--install` on an existing installation
+can never re-arm a self-bridge. **Cutover** costs ~10 seconds; clients
+reconnect on their own because the address and PKI stay the same.
+
+**Mandatory verification:** `--update` and `--cutover` end fail-closed
+with a scriptable ACL enforcement proof (`--verify-acl`): a positive test
+(a login with `read #` must receive messages on `#`) plus the negative
+test (a write-only login must receive **nothing** — Mosquitto drops ACL
+violations silently, so the passing positive test is what makes the empty
+result meaningful). The printed `ACL-VERIFY` line (UTC + commit) is your
+recurring evidence; re-run it after every broker update or restart.
+Configure `VERIFY_SSH`, `VERIFY_LOGIN`, `VERIFY_NEG_LOGIN` and
+`VERIFY_TLS_ARGS` in `.local/deploy.conf`; `--no-verify` is the explicit
+escape hatch.
 
 ## Status
 
@@ -89,6 +107,12 @@ mapped volumes, the broker gets resource limits
 image is pinned to a manifest-list digest, CI actions are pinned to
 release-tag SHAs, and CI scans both the Dockerfile configuration and the
 built image for CVEs (gated on CRITICAL).
+
+v1.0.4 adds fail-safe defaults for the migration bridge
+(`migration_bridge.enabled` defaults to `false`; `--install` never arms
+it implicitly — use `--install --with-bridge` for a migration) and the
+recurring, scriptable ACL enforcement proof (`--verify-acl`, wired as the
+mandatory fail-closed conclusion of `--update`/`--cutover`).
 
 ## License
 

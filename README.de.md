@@ -53,17 +53,31 @@ Add-on-Optionen).
 ```bash
 cp deploy.conf.example .local/deploy.conf   # dann anpassen
 ./scripts/deploy.sh                          # Status beider Add-ons
-./scripts/deploy.sh --install --apply        # bauen + parallel auf :18883
+./scripts/deploy.sh --install --with-bridge --apply  # Migration: bauen +
+                                             # parallel auf :18883, Bridge armiert
+./scripts/deploy.sh --install --apply        # Re-Run/Repair OHNE Bridge
+./scripts/deploy.sh --update --apply         # neue Add-on-Version ausrollen
 ./scripts/deploy.sh --cutover                # Cutover-Plan ansehen
 ./scripts/deploy.sh --cutover --apply        # Produktionsport übernehmen
 ./scripts/deploy.sh --rollback --apply       # zurück zum offiziellen Add-on
+./scripts/deploy.sh --verify-acl             # ACL-Enforcement-Nachweis
 ```
 
 Jede Phase ist ohne `--apply` ein Dry-Run. **Install** ist gefahrlos:
 der neue Broker läuft parallel, der alte bleibt unberührt, Logins werden
 serverseitig per Supervisor-API übernommen (Passwörter verlassen den Host
-nie). **Cutover** kostet ~10 Sekunden; Clients reconnecten von selbst,
-weil Adresse und PKI gleich bleiben.
+nie). Die Migrations-Bridge wird **nur** mit `--with-bridge` armiert
+(fail-safe Default — ein Re-Run von `--install` kann keine Selbst-Bridge
+scharfschalten). **Cutover** kostet ~10 Sekunden; Clients reconnecten von
+selbst, weil Adresse und PKI gleich bleiben.
+
+`--update` und `--cutover` enden fail-closed mit dem scriptbaren
+ACL-Nachweis (`--verify-acl`): Positivtest (Login mit `read #` muss auf
+`#` liefern) plus Negativtest (write-only-Login darf **nichts** liefern).
+Die `ACL-VERIFY`-Zeile (UTC + Commit) ist der wiederkehrende Beleg — nach
+jedem Broker-Update/-Neustart erneut fahren. Konfiguration:
+`VERIFY_SSH`/`VERIFY_LOGIN`/`VERIFY_NEG_LOGIN`/`VERIFY_TLS_ARGS` in
+`.local/deploy.conf`; `--no-verify` ist der explizite Notausstieg.
 
 ## Lizenz
 

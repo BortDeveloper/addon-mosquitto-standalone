@@ -12,10 +12,20 @@ BROKER_SSH="root@homeassistant.local"
 # to the repo root.
 SSH_IDENTITY=".local/ssh/id_ed25519"
 
-# Optional: a host with mosquitto-clients + a valid client certificate
-# for the retained comparison during the migration (empty = check off).
-# VERIFY_LOGIN must be a login with 'read #' in the ACL; its password is
-# looked up server-side in the old add-on's options.
+# Verification host: a host with mosquitto-clients + a valid client
+# certificate. Used for the retained comparison during the migration AND
+# for the recurring ACL enforcement proof (--verify-acl, the mandatory
+# conclusion of --update/--cutover). Leaving these empty turns the
+# retained comparison off, but makes the ACL verification FAIL CLOSED
+# (--no-verify is the explicit escape hatch).
+# VERIFY_LOGIN must have 'read #' in the ACL (positive test);
+# VERIFY_NEG_LOGIN must NOT be allowed to read '#' (negative test, e.g. a
+# write-only login). Passwords are looked up server-side in the add-on
+# options — they never appear on this script's argv.
 VERIFY_SSH=""
 VERIFY_LOGIN=""
+VERIFY_NEG_LOGIN=""
 VERIFY_TLS_ARGS="--cafile /path/ca.crt --cert /path/client.crt --key /path/client.key"
+# Optional prefix for mosquitto_sub on the verification host, e.g. "sudo"
+# if the client certificate/key there is readable by root only.
+VERIFY_SUDO=""

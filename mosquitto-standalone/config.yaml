@@ -13,7 +13,7 @@
 # (backups, watchdog, clean start/stop) while still being an ordinary
 # container with our configuration.
 name: Mosquitto Standalone
-version: "1.0.3"
+version: "1.0.4"
 slug: mosquitto_standalone
 description: >-
   Stock Mosquitto (mTLS, password_file, acl_file) replacing the official
@@ -65,6 +65,10 @@ options:
   # retained ones ("topic # in 0") — the complete retained store migrates
   # losslessly. Auth: client certificate (bridge_*) + login
   # remote_username (password is looked up in the logins list).
+  # Default is DISABLED (fail-safe: after the cutover the old address is
+  # this broker itself — a re-enabled bridge would echo-loop). A real
+  # migration arms it explicitly: deploy.sh --install --with-bridge
+  # (which verifies that the old broker is actually running).
   # NOTE: the certificate must be verifiable by the old broker WITHOUT a
   # missing intermediate — use a cert signed directly by your client CA,
   # or a full-chain PEM.

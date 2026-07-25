@@ -74,7 +74,7 @@ Kernidee:
 
 Repo-Struktur (siehe dieses Repository):
 
-```
+```text
 <addon-ordner>/
 ├── config.yaml   # Add-on-Manifest: Ports, Mappings, Optionen + Schema
 ├── Dockerfile    # FROM eclipse-mosquitto:<version>-alpine + jq + run.sh
@@ -146,7 +146,7 @@ und jederzeit abgebrochen werden können:
 4. **Migrations-Bridge**: Das neue Add-on verbindet sich als
    Bridge-*Client* zum Alt-Broker und importiert alles:
 
-   ```
+   ```text
    connection migration
    address <broker-lan-ip>:8883
    topic # in 0

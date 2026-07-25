@@ -31,6 +31,26 @@ retained store via an MQTT bridge, verify (including an empirical ACL
 negative test), then cut over with a few seconds of downtime — with a
 trivial rollback path.
 
+## Who should read what
+
+This README serves three audiences — each has an entry point:
+
+| Audience | Interest | Start here |
+| --- | --- | --- |
+| Curious / evaluating | What does it do, and why? | Problem + Solution above, [Status](#status) |
+| Operators | Install, migrate, verify | [Quick start](#quick-start), migration guide (phased migration) |
+| Developers | Build and internals | migration guide § *Design decisions in detail*, `mosquitto-standalone/config.yaml` (options schema) |
+
+Task-oriented — "I want to …":
+
+| I want to … | Document |
+| --- | --- |
+| understand the ACL bug and the fix | Problem + Solution above |
+| set up the add-on in minutes | [Quick start](#quick-start) |
+| run the low-risk migration | [migration guide](docs/migration-guide.en.md) |
+| prove the ACL is enforced | [Quick start](#quick-start) → `--verify-acl` |
+| look up an add-on option | `mosquitto-standalone/config.yaml` (schema) |
+
 ## Documentation
 
 Start here — a full, reproducible walkthrough of the approach, the test
@@ -44,7 +64,7 @@ Deutsche Kurzfassung dieses READMEs: [README.de.md](README.de.md)
 
 ## Repository layout
 
-```
+```text
 mosquitto-standalone/   the add-on (copy to /addons/<dir> on the HAOS host)
 ├── config.yaml         add-on manifest: ports, mappings, options + schema
 ├── Dockerfile          FROM eclipse-mosquitto:<pinned>-alpine + jq + run.sh

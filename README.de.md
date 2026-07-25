@@ -33,6 +33,26 @@ vollständige Übernahme des Retained-Bestands per MQTT-Bridge,
 Verifikation (inkl. empirischem ACL-Negativtest), dann Cutover mit
 wenigen Sekunden Downtime — mit trivialem Rollback-Pfad.
 
+## Wer liest was
+
+Diese README bedient drei Zielgruppen — jede findet hier ihren Einstieg:
+
+| Zielgruppe | Interesse | Einstieg |
+| --- | --- | --- |
+| Interessierte / Evaluierende | Was tut es, warum? | Problem + Lösung oben, [Status im Guide](docs/migration-guide.de.md) |
+| Operateure | Installieren, migrieren, verifizieren | [Schnellstart](#schnellstart), Migration-Guide (Phasen-Migration) |
+| Programmierer | Aufbau und Interna | Migration-Guide §2 *Design-Entscheidungen*, `mosquitto-standalone/config.yaml` (Options-Schema) |
+
+Task-orientiert — „Ich möchte …":
+
+| Ich möchte … | Dokument |
+| --- | --- |
+| den ACL-Bug und den Fix verstehen | Problem + Lösung oben |
+| das Add-on in Minuten aufsetzen | [Schnellstart](#schnellstart) |
+| die risikoarme Migration fahren | [Migration-Guide](docs/migration-guide.de.md) |
+| die ACL-Wirkung nachweisen | [Schnellstart](#schnellstart) → `--verify-acl` |
+| eine Add-on-Option nachschlagen | `mosquitto-standalone/config.yaml` (Schema) |
+
 ## Dokumentation
 
 Der vollständige, nachbaubare Ablauf (Ansatz, Teststrategie,

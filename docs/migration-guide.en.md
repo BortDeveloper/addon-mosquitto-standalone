@@ -72,7 +72,7 @@ Core idea:
 
 Repository layout (see this repository):
 
-```
+```text
 <addon-folder>/
 ├── config.yaml   # add-on manifest: ports, mappings, options + schema
 ├── Dockerfile    # FROM eclipse-mosquitto:<version>-alpine + jq + run.sh
@@ -143,7 +143,7 @@ be aborted at any time:
 4. **Migration bridge**: the new add-on connects as a bridge *client* to
    the old broker and imports everything:
 
-   ```
+   ```text
    connection migration
    address <broker-lan-ip>:8883
    topic # in 0

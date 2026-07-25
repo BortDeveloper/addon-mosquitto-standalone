@@ -13,7 +13,7 @@
 # (backups, watchdog, clean start/stop) while still being an ordinary
 # container with our configuration.
 name: Mosquitto Standalone
-version: "1.0.4"
+version: "1.0.5"
 slug: mosquitto_standalone
 description: >-
   Stock Mosquitto (mTLS, password_file, acl_file) replacing the official

@@ -93,6 +93,22 @@ certfile $CERTFILE
 keyfile $KEYFILE
 require_certificate true
 
+# TLS policy — set explicitly instead of inheriting the OpenSSL/base-image
+# default (S-4), measured against BSI TR-02102-2: Perfect Forward Secrecy
+# is required, so the TLS<=1.2 suite list is pinned to ECDHE key exchange
+# with AEAD ciphers only (AES-GCM / ChaCha20-Poly1305); the static-RSA /
+# non-PFS suites that ship in OpenSSL's default TLS-1.2 list are dropped.
+# Being explicit also stops a future base-image / openssl.cnf change from
+# silently widening the suite list.
+# TLS 1.3 stays enabled and is NOT restricted here on purpose: mosquitto's
+# tls_version selects EXACTLY ONE protocol version (it has no "minimum
+# only" form), so pinning "tlsv1.2" would DROP TLS 1.3 — the opposite of
+# TR-02102-2's preference. TLS 1.3 suites are all PFS+AEAD already and are
+# governed by ciphers_tls1.3, left at the library default (PFS-only). A
+# future TLS-1.3-only listener is possible once every MQTT client is
+# confirmed 1.3-capable (run a compatibility test first).
+ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256
+
 allow_anonymous false
 password_file $PASSWD
 acl_file $ACLFILE

@@ -114,6 +114,14 @@ it implicitly — use `--install --with-bridge` for a migration) and the
 recurring, scriptable ACL enforcement proof (`--verify-acl`, wired as the
 mandatory fail-closed conclusion of `--update`/`--cutover`).
 
+v1.0.5 makes the TLS policy explicit instead of inheriting the library
+default: the generated `mosquitto.conf` pins a PFS-only cipher list for
+TLS ≤ 1.2 (ECDHE key exchange, AES-GCM / ChaCha20-Poly1305), dropping the
+non-PFS static-RSA suites. TLS 1.3 stays enabled (its suites are all
+PFS + AEAD); `tls_version` is deliberately not pinned, since mosquitto
+would then negotiate exactly one version and `tlsv1.2` would disable
+TLS 1.3.
+
 ## License
 
 [MIT](LICENSE)

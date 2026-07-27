@@ -289,13 +289,20 @@ verify_acl() {
     [[ -n "${pw}" ]] || { err "login $1 not found in the add-on options"; return 1; }
     # Every received message prints a literal "x" line (-F x); any other
     # output line came from stderr (2>&1) and marks a connection problem.
+    # Exception: mosquitto_sub reports the REGULAR expiry of the -W window
+    # as "Timed out" on stderr (client/sub_client.c; mosquitto clients are
+    # not localised, so this exact string is stable). That line is benign
+    # — it appears in every passing probe (positive: x lines + "Timed out",
+    # negative: only "Timed out") and must not count as a connection error.
+    # Real errors (Connection refused, TLS failures, "not authorised",
+    # host lookup) still land in BAD and yield CONN-ERR.
     # shellcheck disable=SC2029  # host/port/login deliberately expand client-side
     printf '%s\n' "${pw}" | ssh "${SSH_OPTS[@]}" "${VERIFY_SSH}" 'read -r PW
       OUT=$('"${VERIFY_SUDO:-}"' mosquitto_sub -h '"${broker_host}"' -p '"${port}"' '"${VERIFY_TLS_ARGS:-}"' \
         -i acl-verify-'"$2"' -u '"$1"' -P "$PW" -F x -t "#" -W 10 2>&1) || true
-      BAD=$(printf "%s" "$OUT" | grep -vc "^x$") || true
+      BAD=$(printf "%s" "$OUT" | grep -Evc "^(x|Timed out)$") || true
       if [ "${BAD:-0}" -gt 0 ]; then
-        printf "%s\n" "$OUT" | grep -v "^x$" >&2
+        printf "%s\n" "$OUT" | grep -Ev "^(x|Timed out)$" >&2
         echo CONN-ERR
       else
         printf "%s" "$OUT" | grep -c "^x$" || true

@@ -31,15 +31,18 @@ retained store via an MQTT bridge, verify (including an empirical ACL
 negative test), then cut over with a few seconds of downtime — with a
 trivial rollback path.
 
-## Who should read what
+## By audience
 
-This README serves three audiences — each has an entry point:
+This README serves six lenses — each has an entry point:
 
-| Audience | Interest | Start here |
+| Lens | I want to know … | Start here |
 | --- | --- | --- |
-| Curious / evaluating | What does it do, and why? | Problem + Solution above, [Status](#status) |
-| Operators | Install, migrate, verify | [Quick start](#quick-start), migration guide (phased migration) |
-| Developers | Build and internals | migration guide § *Design decisions in detail*, `mosquitto-standalone/config.yaml` (options schema) |
+| **USER** | what it does and how to use it | [Quick start](#quick-start) |
+| **TECHNICIAN** | how it works (components, data flow, topology) | [Architecture](#architecture) |
+| **DEVELOPER** | build, internals, how to contribute | [migration guide § design decisions](docs/migration-guide.en.md) |
+| **OPERATOR** | operate step by step + automation | [Quick start](#quick-start) · [migration guide](docs/migration-guide.en.md) |
+| **ARCHITECTURE** | the key decision / topology | [Architecture](#architecture) · [migration guide](docs/migration-guide.en.md) |
+| **COMPLIANCE** | standards, secrets/PII, evidence | no secrets/PII in this repo (sanitized export, [MIT](LICENSE)) — the mTLS/ACL design lives in the [migration guide](docs/migration-guide.en.md) |
 
 Task-oriented — "I want to …":
 
@@ -62,7 +65,39 @@ deployment:
 
 Deutsche Kurzfassung dieses READMEs: [README.de.md](README.de.md)
 
-## Repository layout
+## Architecture
+
+Topology (Mermaid, versioned — TECHNICIAN lens; trust zones as `subgraph`,
+edges labelled with protocol/port). A single-container add-on, so the
+diagram lives inline here rather than in a separate `docs/ARCHITECTURE.md`:
+
+```mermaid
+flowchart LR
+    subgraph clients["MQTT clients (LAN, mTLS)"]
+        c1["home automation clients"]
+        haint["HA MQTT integration"]
+    end
+
+    subgraph haos["HAOS host / Supervisor"]
+        addon["this add-on<br/>stock Eclipse Mosquitto"]
+        watchdog["Supervisor watchdog"]
+        official["official add-on<br/>migration source broker"]
+    end
+
+    subgraph ext["external inputs (paths are options)"]
+        acl["acl_file (/share/...)"]
+        pki["mTLS PKI (/ssl/...)"]
+    end
+
+    c1 -->|"MQTT 8883"| addon
+    haint -->|"MQTT 8883"| addon
+    acl -.->|"acl_file read-only"| addon
+    pki -.->|"require_certificate"| addon
+    watchdog -.->|"TCP connect 8883"| addon
+    addon -->|"migration bridge topic # in 0"| official
+```
+
+Repository layout:
 
 ```text
 mosquitto-standalone/   the add-on (copy to /addons/<dir> on the HAOS host)
@@ -111,6 +146,12 @@ recurring evidence; re-run it after every broker update or restart.
 Configure `VERIFY_SSH`, `VERIFY_LOGIN`, `VERIFY_NEG_LOGIN` and
 `VERIFY_TLS_ARGS` in `.local/deploy.conf`; `--no-verify` is the explicit
 escape hatch.
+
+**Automation (OPERATOR lens):** these deploys are *deliberately manual* —
+operator-triggered, never scheduled, because they touch a live broker
+(separation of duties). The one automated piece is `--verify-acl`, wired
+`Script (on-demand)` as the fail-closed conclusion of `--update`/`--cutover`;
+re-run it after every broker restart.
 
 ## Status
 

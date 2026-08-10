@@ -33,15 +33,18 @@ vollständige Übernahme des Retained-Bestands per MQTT-Bridge,
 Verifikation (inkl. empirischem ACL-Negativtest), dann Cutover mit
 wenigen Sekunden Downtime — mit trivialem Rollback-Pfad.
 
-## Wer liest was
+## Nach Zielgruppe
 
-Diese README bedient drei Zielgruppen — jede findet hier ihren Einstieg:
+Diese README bedient sechs Lenses — jede findet hier ihren Einstieg:
 
-| Zielgruppe | Interesse | Einstieg |
+| Lens | Ich will wissen … | Einstieg |
 | --- | --- | --- |
-| Interessierte / Evaluierende | Was tut es, warum? | Problem + Lösung oben, [Status im Guide](docs/migration-guide.de.md) |
-| Operateure | Installieren, migrieren, verifizieren | [Schnellstart](#schnellstart), Migration-Guide (Phasen-Migration) |
-| Programmierer | Aufbau und Interna | Migration-Guide §2 *Design-Entscheidungen*, `mosquitto-standalone/config.yaml` (Options-Schema) |
+| **ANWENDER** | was es tut und wie ich es nutze | [Schnellstart](#schnellstart) |
+| **TECHNIKER** | wie es funktioniert (Komponenten, Datenfluss, Topologie) | [Architektur](#architektur) |
+| **PROGRAMMIERER** | Aufbau, Interna, Beiträge | [Migration-Guide §Design-Entscheidungen](docs/migration-guide.de.md) |
+| **OPERATEUR** | Betrieb Schritt für Schritt + Automatisierung | [Schnellstart](#schnellstart) · [Migration-Guide](docs/migration-guide.de.md) |
+| **ARCHITEKTUR** | tragende Entscheidung/Topologie | [Architektur](#architektur) · [Migration-Guide](docs/migration-guide.de.md) |
+| **COMPLIANCE** | Standards, Secrets/PII, Nachweise | keine Secrets/PII in diesem Repo (sanitisierter Export, [MIT](LICENSE)) — mTLS/ACL-Design im [Migration-Guide](docs/migration-guide.de.md) |
 
 Task-orientiert — „Ich möchte …":
 
@@ -62,6 +65,49 @@ Phasen-Migration, Stolperstein-Tabelle aus einem echten Deploy):
 - **[docs/migration-guide.en.md](docs/migration-guide.en.md)** (English)
 
 English version of this README: [README.md](README.md)
+
+## Architektur
+
+Topologie (Mermaid, versioniert — TECHNIKER-Lens; Trust-Zonen als `subgraph`,
+Kanten mit Protokoll/Port). Ein Ein-Container-Add-on, daher steht das
+Diagramm inline hier statt in einer eigenen `docs/ARCHITECTURE.md`:
+
+```mermaid
+flowchart LR
+    subgraph clients["MQTT-Clients (LAN, mTLS)"]
+        c1["Hausautomations-Clients"]
+        haint["HA-MQTT-Integration"]
+    end
+
+    subgraph haos["HAOS-Host / Supervisor"]
+        addon["dieses Add-on<br/>Stock-Eclipse-Mosquitto"]
+        watchdog["Supervisor-Watchdog"]
+        official["offizielles Add-on<br/>Migrations-Alt-Broker"]
+    end
+
+    subgraph ext["externe Eingaben (Pfade sind Optionen)"]
+        acl["acl_file (/share/...)"]
+        pki["mTLS-PKI (/ssl/...)"]
+    end
+
+    c1 -->|"MQTT 8883"| addon
+    haint -->|"MQTT 8883"| addon
+    acl -.->|"acl_file read-only"| addon
+    pki -.->|"require_certificate"| addon
+    watchdog -.->|"TCP-Connect 8883"| addon
+    addon -->|"Migrations-Bridge topic # in 0"| official
+```
+
+Repo-Layout:
+
+```text
+mosquitto-standalone/   das Add-on (nach /addons/<dir> auf dem HAOS-Host)
+├── config.yaml         Add-on-Manifest: Ports, Mappings, Optionen + Schema
+├── Dockerfile          FROM eclipse-mosquitto:<pinned>-alpine + jq + run.sh
+└── run.sh              generiert mosquitto.conf + password_file, exec't mosquitto
+scripts/deploy.sh       Orchestrierung: Status / Install / Update / Cutover / Rollback
+deploy.conf.example     Vorlage für .local/deploy.conf (gitignored)
+```
 
 ## Schnellstart
 
@@ -98,6 +144,12 @@ Die `ACL-VERIFY`-Zeile (UTC + Commit) ist der wiederkehrende Beleg — nach
 jedem Broker-Update/-Neustart erneut fahren. Konfiguration:
 `VERIFY_SSH`/`VERIFY_LOGIN`/`VERIFY_NEG_LOGIN`/`VERIFY_TLS_ARGS` in
 `.local/deploy.conf`; `--no-verify` ist der explizite Notausstieg.
+
+**Automatisierung (OPERATEUR-Lens):** Diese Deploys sind *bewusst manuell* —
+Operator-getriggert, nie zeitgesteuert, weil sie einen Live-Broker berühren
+(Separation of Duties). Einzig `--verify-acl` läuft automatisiert
+(`Script (on-demand)`) als fail-closed Abschluss von `--update`/`--cutover`;
+nach jedem Broker-Neustart erneut fahren.
 
 ## Lizenz
 

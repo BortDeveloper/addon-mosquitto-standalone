@@ -94,7 +94,7 @@ flowchart LR
     acl -.->|"acl_file read-only"| addon
     pki -.->|"require_certificate"| addon
     watchdog -.->|"TCP connect 8883"| addon
-    addon -->|"migration bridge topic # in 0"| official
+    addon -.->|"migration bridge topic # in 0<br/>only during migration (today: off)"| official
 ```
 
 Repository layout:

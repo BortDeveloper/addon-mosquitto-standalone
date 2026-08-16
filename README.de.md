@@ -95,7 +95,7 @@ flowchart LR
     acl -.->|"acl_file read-only"| addon
     pki -.->|"require_certificate"| addon
     watchdog -.->|"TCP-Connect 8883"| addon
-    addon -->|"Migrations-Bridge topic # in 0"| official
+    addon -.->|"Migrations-Bridge topic # in 0<br/>nur während Migration (heute: aus)"| official
 ```
 
 Repo-Layout:
@@ -150,6 +150,42 @@ Operator-getriggert, nie zeitgesteuert, weil sie einen Live-Broker berühren
 (Separation of Duties). Einzig `--verify-acl` läuft automatisiert
 (`Script (on-demand)`) als fail-closed Abschluss von `--update`/`--cutover`;
 nach jedem Broker-Neustart erneut fahren.
+
+## Status
+
+Produktiv im Einsatz und auf HAOS verifiziert (2026): Der Retained-Bestand
+wurde vollständig übernommen, alle Clients haben sich von selbst wieder
+verbunden, und der ACL-Negativtest greift. Dazu gehört als Nachgang, dass
+die HA-MQTT-Integration vom Superuser-Login auf einen
+Least-Privilege-Login umgezogen ist (Migration-Guide, Phase 5). Wie
+gemessen wurde und welche Stolpersteine dabei auftraten, steht im
+Migration-Guide.
+
+Seit v1.0.2/v1.0.3 ist das Add-on defensiv gehärtet: Optionswerte werden
+vor der Config-Generierung sanitisiert und Dateipfade auf die gemappten
+Volumes begrenzt, der Broker bekommt Ressourcengrenzen
+(`max_connections`, `message_size_limit`, `max_queued_bytes`), das
+Basis-Image ist auf einen Manifest-List-Digest gepinnt, die CI-Actions
+sind auf Release-Tag-SHAs gepinnt, und die CI prüft sowohl die
+Dockerfile-Konfiguration als auch das gebaute Image auf CVEs (Gate auf
+CRITICAL).
+
+v1.0.4 ergänzt fail-safe Defaults für die Migrations-Bridge:
+`migration_bridge.enabled` steht ab Werk auf `false`, und `--install`
+armiert sie nie implizit — für eine Migration braucht es bewusst
+`--install --with-bridge`. Ebenfalls neu ist der wiederkehrende,
+scriptbare ACL-Enforcement-Nachweis (`--verify-acl`), der als
+verpflichtender, fail-closed Abschluss von `--update` und `--cutover`
+verdrahtet ist.
+
+v1.0.5 macht die TLS-Politik explizit, statt den Bibliotheks-Default zu
+erben: Die generierte `mosquitto.conf` pinnt für TLS ≤ 1.2 eine
+PFS-only-Cipher-Liste (ECDHE-Schlüsselaustausch, AES-GCM /
+ChaCha20-Poly1305) und lässt damit die statischen RSA-Suiten ohne Perfect
+Forward Secrecy fallen. TLS 1.3 bleibt aktiv, weil dessen Suiten
+durchgängig PFS und AEAD bieten; `tls_version` wird bewusst **nicht**
+gepinnt, da Mosquitto dann genau eine Version aushandeln würde und
+`tlsv1.2` TLS 1.3 abschalten würde.
 
 ## Lizenz
 

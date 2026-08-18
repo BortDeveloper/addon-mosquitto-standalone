@@ -13,7 +13,7 @@
 # (backups, watchdog, clean start/stop) while still being an ordinary
 # container with our configuration.
 name: Mosquitto Standalone
-version: "1.0.5"
+version: "1.0.6"
 slug: mosquitto_standalone
 description: >-
   Stock Mosquitto (mTLS, password_file, acl_file) replacing the official
@@ -34,8 +34,21 @@ boot: manual
 # API. Clients notice nothing (address + PKI stay the same).
 ports:
   8883/tcp: 18883
+  # Second, restricted listener for legacy devices that cannot do mTLS
+  # (no client certificate). Statically mapped so the Supervisor manifest
+  # stays stable; while legacy_listener.enabled=false (default) nothing
+  # listens on the container side of this port. Operators who want the
+  # port CLOSED at the host level while unused can additionally null the
+  # mapping via the Supervisor network option (see docs/legacy-listener
+  # notes in the operating repo).
+  8884/tcp: 8884
 ports_description:
   8883/tcp: MQTT over mTLS (require_certificate)
+  8884/tcp: >-
+    Restricted listener for legacy, non-mTLS-capable devices
+    (legacy_listener option, disabled by default). Never enable this
+    without a network-level source restriction (host firewall / VLAN) in
+    front of it — see the migration guide, "Restricted second listener".
 # Watchdog: the Supervisor probes the mapped host port and restarts the
 # add-on on hangs. Template syntax: [PORT:<container-port>] WITHOUT a
 # /tcp suffix — the Supervisor validator rejects "[PORT:8883/tcp]".
@@ -82,6 +95,34 @@ options:
     bridge_cafile: /ssl/mosquitto/ca.crt
     bridge_certfile: /ssl/client.crt
     bridge_keyfile: /ssl/client.key
+  # Second, restricted listener for legacy devices that cannot speak mTLS
+  # (no client certificate support) — e.g. old embedded/IoT firmware.
+  # Disabled by default (fail-safe): the mTLS listener above is untouched
+  # by this option in every way, and enabling this one is a deliberate,
+  # separate act.
+  # DOES NOT replace network-level restriction: Mosquitto has no
+  # per-connection source-IP ACL, so this listener MUST sit behind a
+  # host-firewall or VLAN restriction to only the specific legacy devices
+  # it serves — see the migration guide, "Restricted second listener".
+  # "tls: true" gives the listener a SERVER certificate (encryption +
+  # server authentication) but does NOT request a client certificate
+  # (unlike the main listener) — for devices that can do TLS but cannot
+  # manage a client cert/key pair. "tls: false" is a plaintext fallback
+  # for devices that cannot do TLS at all; only ever run it behind the
+  # same network restriction, ideally on an isolated VLAN/subnet.
+  # Either way: allow_anonymous is always false and a password_file login
+  # is always required on this listener too (run.sh hardcodes this — it
+  # is not an option here on purpose).
+  legacy_listener:
+    enabled: false
+    port: 8884
+    # Bind to a specific host interface/IP instead of all interfaces —
+    # narrows exposure further where the host has more than one NIC/VLAN.
+    # Empty = listen on all interfaces (bind_address unset in mosquitto.conf).
+    bind_address: ""
+    tls: true
+    certfile: /ssl/mosquitto/broker.crt
+    keyfile: /ssl/mosquitto/broker.key
 schema:
   cafile: str
   certfile: str
@@ -97,3 +138,10 @@ schema:
     bridge_cafile: str
     bridge_certfile: str
     bridge_keyfile: str
+  legacy_listener:
+    enabled: bool
+    port: port
+    bind_address: str
+    tls: bool
+    certfile: str
+    keyfile: str

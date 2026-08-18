@@ -295,3 +295,67 @@ Positivtests von einem einzigen Messhost fahren.
   oder nachzurüsten.
 - Der Fix des Upstream-Bugs #4571 ändert an diesem Setup nichts — man ist
   dann einfach unabhängig davon.
+
+## 7. Optional: eingegrenzter Zweit-Listener für nicht-mTLS-fähige Geräte
+
+Manche Geräte (insbesondere ältere Embedded-/IoT-Firmware) können kein
+mTLS — sie haben keine Möglichkeit, ein Client-Zertifikat zu halten.
+Wer solche Geräte hat und sie direkt gegen diesen Broker sprechen
+lassen will statt über eine Bridge/ein Gateway, findet dafür die
+Add-on-Optionen `legacy_listener.*`: einen **zweiten, eng eingegrenzten
+Listener** auf einem eigenen Port, vollständig getrennt vom
+mTLS-Listener:
+
+```yaml
+legacy_listener:
+  enabled: false        # Fail-safe-Default — muss bewusst aktiviert werden
+  port: 8884             # eigener Port, getrennt von 8883
+  bind_address: ""       # optional: auf eine Host-Schnittstelle einschränken
+  tls: true               # true = Server-Zertifikat-TLS ohne Client-Zertifikat;
+                          # false = Klartext-Rückfall
+  certfile: /ssl/mosquitto/broker.crt
+  keyfile: /ssl/mosquitto/broker.key
+```
+
+Zwei Varianten, beide von `run.sh` als vollständig eigenständiger
+`listener`-Block erzeugt (nichts wird vom mTLS-Listener geerbt — jede
+Direktive wird für diesen Block explizit wiederholt):
+
+- **`tls: true`** — der Listener zeigt ein Server-Zertifikat
+  (Verschlüsselung + Server-Identität), verlangt aber **kein**
+  Client-Zertifikat (`require_certificate` fehlt bewusst). Für Geräte,
+  die TLS können, aber kein Client-Zertifikat/-Key-Paar verwalten
+  können. Nutzt dieselbe PFS-only-Cipherliste wie der mTLS-Listener
+  (BSI TR-02102-2).
+- **`tls: false`** — Klartext-Rückfall für Geräte, die gar kein TLS
+  können. Nur mit zusätzlicher Netzwerk-Isolation betreiben (siehe
+  unten) — Klartext-MQTT zeigt das Login auf der Leitung jedem im
+  selben Netzsegment.
+
+Beide Varianten behalten `allow_anonymous false` und dieselbe
+`password_file`/`acl_file` wie der mTLS-Listener (dieselbe
+Login-Datenbank; die Berechtigung läuft über dedizierte ACL-Einträge
+für eine eigene Account-Klasse, nicht über eine zweite
+Passwort-Ablage).
+
+**Was das NICHT liefert: eine IP-Allow-Liste.** Mosquitto hat keine
+eigene Verbindungs-ACL nach Quell-IP. Wer einschränken will, welche
+Hosts diesen Listener überhaupt erreichen dürfen (dringend empfohlen —
+dieser Listener prüft kein Client-Zertifikat), braucht dafür eine
+Kontrolle auf Netzwerk-Ebene: eine Host-Firewall-Regel (z. B. Dockers
+`DOCKER-USER`-iptables-Chain, die vor Dockers eigenen
+Forwarding-Regeln für veröffentlichte Container-Ports ausgewertet
+wird) oder VLAN-/Subnetz-Isolation. Diese Einschränkung muss **vor**
+dem Setzen von `legacy_listener.enabled: true` stehen — die
+Reihenfolge zählt, genau wie bei der Migrations-Bridge während eines
+Cutovers (§3, Phase 3).
+
+Empfohlene Verifikation nach der Aktivierung: ein Positivtest (ein
+zugelassenes Gerät verbindet sich und publiziert), ein Negativtest auf
+Konto-/ACL-Ebene (ein ungültiger Login, oder einer ohne Rechte auf dem
+Geräte-Namensraum, wird abgewiesen — MQTT-CONNACK, nicht Stille) und
+ein **separater** Negativtest auf Netzwerk-Ebene (ein
+Verbindungsversuch von einem Host außerhalb der Allow-Liste scheitert
+bereits auf TCP-Ebene, bevor er Mosquitto überhaupt erreicht) — als
+Beleg, dass sowohl die Netzwerk-Kontrolle als auch die Auth des
+Brokers tatsächlich wirken, nicht nur eine von beiden.

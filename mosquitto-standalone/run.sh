@@ -48,26 +48,6 @@ for f in "$CAFILE" "$CERTFILE" "$KEYFILE" "$ACLFILE"; do
   [ -f "$f" ] || { echo "[run.sh] ERROR: file missing: $f" >&2; exit 1; }
 done
 
-# Legacy listener options (disabled by default; see config.yaml comments
-# and the migration guide, "Restricted second listener"). Read
-# defensively even when disabled, so a malformed value is caught at
-# start time rather than silently ignored.
-LEGACY_ENABLED=$(jq -r '.legacy_listener.enabled' "$OPTS")
-LEGACY_PORT=$(jq -r '.legacy_listener.port' "$OPTS" | tr -d '\n')
-LEGACY_BIND=$(jq -r '.legacy_listener.bind_address' "$OPTS" | tr -d '\n')
-LEGACY_TLS=$(jq -r '.legacy_listener.tls' "$OPTS")
-LEGACY_CERTFILE=$(jq -r '.legacy_listener.certfile' "$OPTS" | tr -d '\n')
-LEGACY_KEYFILE=$(jq -r '.legacy_listener.keyfile' "$OPTS" | tr -d '\n')
-case "$LEGACY_PORT" in
-  ''|*[!0-9]*) echo "[run.sh] ERROR: legacy_listener.port is not numeric: $LEGACY_PORT" >&2; exit 1 ;;
-esac
-if [ "$LEGACY_ENABLED" = "true" ] && [ "$LEGACY_TLS" = "true" ]; then
-  for f in "$LEGACY_CERTFILE" "$LEGACY_KEYFILE"; do
-    validate_ssl_or_share_path "$f"
-    [ -f "$f" ] || { echo "[run.sh] ERROR: file missing: $f" >&2; exit 1; }
-  done
-fi
-
 # --- 1) password_file --------------------------------------------------------
 # First a plaintext "user:pass" file (0600 thanks to umask), then hash it
 # in place: mosquitto_passwd -U converts the file to PBKDF2 without any
@@ -79,12 +59,6 @@ mosquitto_passwd -U "$PASSWD"
 # mTLS required, no plaintext listener, no anonymous access. Unlike the
 # official add-on, builtin-security is the ONLY auth mechanism — the file
 # ACL therefore actually takes effect (no go-auth, see the guide).
-# PFS-only cipher list, shared by every TLS listener this add-on defines
-# (measured against BSI TR-02102-2: Perfect Forward Secrecy is required).
-# A plain shell variable (NOT part of the heredoc below) so it can be
-# reused verbatim for the optional legacy TLS listener further down —
-# see the long-form rationale at its first use (listener 8883).
-PFS_CIPHERS="ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256"
 cat > "$CONF" <<EOF
 user root
 persistence true
@@ -133,55 +107,12 @@ require_certificate true
 # governed by ciphers_tls1.3, left at the library default (PFS-only). A
 # future TLS-1.3-only listener is possible once every MQTT client is
 # confirmed 1.3-capable (run a compatibility test first).
-ciphers $PFS_CIPHERS
+ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256
 
 allow_anonymous false
 password_file $PASSWD
 acl_file $ACLFILE
 EOF
-
-# --- 2b) optional legacy listener (legacy_listener.enabled=true only) --------
-# Second listener for devices that cannot do mTLS (no client certificate),
-# e.g. old embedded/IoT firmware. Off by default (fail-safe) and, even
-# when on, deliberately NOT a relaxation of the mTLS listener above: it is
-# an entirely separate listener block with its own port, its own explicit
-# "allow_anonymous false" + "password_file" + "acl_file" (per-listener
-# settings — Mosquitto 2.x applies settings written after a "listener"
-# line to THAT listener only; nothing here is inherited from listener
-# 8883, so every relevant directive is repeated explicitly rather than
-# assumed).
-# What this does NOT do: Mosquitto has no per-connection source-IP ACL of
-# its own. Restricting WHICH clients may even reach this port is a
-# network-level control (host firewall / VLAN) that must exist BEFORE
-# this is switched on — see the migration guide and the operating repo's
-# runbook. This add-on only binds the socket and enforces
-# authentication/ACL on whoever gets through.
-if [ "$LEGACY_ENABLED" = "true" ]; then
-  {
-    echo ""
-    if [ -n "$LEGACY_BIND" ]; then
-      echo "listener $LEGACY_PORT $LEGACY_BIND"
-    else
-      echo "listener $LEGACY_PORT"
-    fi
-    if [ "$LEGACY_TLS" = "true" ]; then
-      # Server-certificate TLS WITHOUT require_certificate: the listener
-      # authenticates itself to the client (encryption + server identity)
-      # but does not ask the client for a certificate — for devices that
-      # can do TLS but cannot manage a client cert/key pair. Deliberately
-      # no "require_certificate" line at all (its absence is the point).
-      echo "certfile $LEGACY_CERTFILE"
-      echo "keyfile $LEGACY_KEYFILE"
-      echo "ciphers $PFS_CIPHERS"
-    fi
-    echo "allow_anonymous false"
-    echo "password_file $PASSWD"
-    echo "acl_file $ACLFILE"
-  } >> "$CONF"
-  echo "[run.sh] legacy listener ACTIVE on port $LEGACY_PORT (tls=$LEGACY_TLS) — network-level source restriction MUST already be in place"
-else
-  echo "[run.sh] legacy listener off (default)"
-fi
 
 # --- 3) migration bridge (only while migration_bridge.enabled=true) ----------
 # This broker connects as a CLIENT to the old broker and imports

@@ -106,6 +106,8 @@ mosquitto-standalone/   the add-on (copy to /addons/<dir> on the HAOS host)
 └── run.sh              generates mosquitto.conf + password file, execs mosquitto
 scripts/deploy.sh       orchestration: status / install / update / cutover / rollback
 deploy.conf.example     template for .local/deploy.conf (gitignored)
+.github/workflows/ci.yml  CI: shellcheck, gitleaks, trivy (config), trivy-image
+.shellcheckrc / .trivyignore  linter rules / documented scanner exceptions
 ```
 
 ## Quick start

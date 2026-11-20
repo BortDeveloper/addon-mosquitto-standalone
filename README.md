@@ -62,14 +62,18 @@ deployment:
 
 - **[docs/migration-guide.en.md](docs/migration-guide.en.md)** (English)
 - **[docs/migration-guide.de.md](docs/migration-guide.de.md)** (Deutsch)
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — architecture, all perspectives, recovery flow
 
 Deutsche Kurzfassung dieses READMEs: [README.de.md](README.de.md)
 
 ## Architecture
 
-Topology (Mermaid, versioned — TECHNICIAN lens; trust zones as `subgraph`,
-edges labelled with protocol/port). A single-container add-on, so the
-diagram lives inline here rather than in a separate `docs/ARCHITECTURE.md`:
+Full architecture documentation — all perspectives (context, building
+blocks, deployment, runtime, data, security, delivery, recovery, decisions)
+as plain-text diagrams: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
+Topology overview (Mermaid, versioned — TECHNICIAN lens; trust zones as
+`subgraph`, edges labelled with protocol/port):
 
 ```mermaid
 flowchart LR

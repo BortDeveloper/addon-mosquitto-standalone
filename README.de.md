@@ -63,14 +63,19 @@ Phasen-Migration, Stolperstein-Tabelle aus einem echten Deploy):
 
 - **[docs/migration-guide.de.md](docs/migration-guide.de.md)** (Deutsch)
 - **[docs/migration-guide.en.md](docs/migration-guide.en.md)** (English)
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Architektur, alle Perspektiven, Wiederherstellungsablauf (English)
 
 English version of this README: [README.md](README.md)
 
 ## Architektur
 
-Topologie (Mermaid, versioniert — TECHNIKER-Lens; Trust-Zonen als `subgraph`,
-Kanten mit Protokoll/Port). Ein Ein-Container-Add-on, daher steht das
-Diagramm inline hier statt in einer eigenen `docs/ARCHITECTURE.md`:
+Vollständige Architekturdoku — alle Perspektiven (Kontext, Bausteine,
+Verteilung, Laufzeit, Daten, Sicherheit, Lieferung, Wiederherstellung,
+Entscheidungen) als Textdiagramme, englisch:
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
+Topologie-Überblick (Mermaid, versioniert — TECHNIKER-Lens; Trust-Zonen als
+`subgraph`, Kanten mit Protokoll/Port):
 
 ```mermaid
 flowchart LR

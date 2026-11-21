@@ -77,7 +77,7 @@ options:
   # --cutover enforces the order.
   migration_bridge:
     enabled: false
-    address: 192.168.1.2:8883
+    address: 192.0.2.2:8883
     remote_username: admin
     bridge_cafile: /ssl/mosquitto/ca.crt
     bridge_certfile: /ssl/client.crt

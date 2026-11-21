@@ -1,0 +1,17 @@
+# Projektbeschreibung nach stack-master ADR-0044 (D.2): Rollen und Regeln, keine Werte.
+# Klarwerte stehen in .local/werte.yml, die Pruefliste in .local/verboten.txt (beide gitignored).
+name = "addon-mosquitto-standalone"
+
+[backup]
+# Rolle des Hosts, auf dem die Daten liegen (z. B. workstation, vps, ransible), keine Adresse
+host = "workstation"
+# relativ zur Repo-Wurzel oder mit ~ (nie mit Nutzernamen); Code kommt aus GitHub, hier nur Klasse I/G
+quellen = [".local"]
+ausschluesse = []
+
+[datenwaechter]
+# Muster (Python-Regex, ganzer Wert), die kein echter Wert sind -- jede Zeile begruenden
+#   root@homeassistant\.local                generischer HAOS-mDNS-Default in deploy.conf.example
+erlaube_werte = ['root@homeassistant\.local']
+# Pfade (glob), die der Waechter auslaesst, z. B. fremder Upstream-Code
+ignoriere_pfade = []

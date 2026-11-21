@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# >>> datenwaechter (ADR-0044, kit/installieren.sh) >>>
+_dw_py=python3; { command -v python3 >/dev/null 2>&1 && python3 -c '' 2>/dev/null; } || _dw_py=python
+_dw_ein="$(mktemp)"; cat > "$_dw_ein"
+"$_dw_py" "$(git rev-parse --show-toplevel)/.kit/datenwaechter.py" --push < "$_dw_ein" || { rm -f "$_dw_ein"; exit 1; }
+exec 0< "$_dw_ein"; rm -f "$_dw_ein" 2>/dev/null || true
+# <<< datenwaechter <<<

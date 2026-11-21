@@ -1,0 +1,2 @@
+# Pruefliste (Beispiel): im Betrieb je Zeile ein Klartext, der nie in Git darf (Namen, Orte,
+# Domains, Adressen). Hier keine Eintraege -- echte Werte stehen nur in ~/.local/share/<projekt>/.

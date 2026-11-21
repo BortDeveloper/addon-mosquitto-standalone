@@ -6,6 +6,9 @@ Prueft Dateiinhalte, Dateinamen, Commit-Nachrichten und Autoren gegen
   2. generische Muster: private und Tailnet-Adressen, MAC-Adressen, E-Mail-Adressen,
      Nutzerpfade (Windows/WSL/Home), private Schluessel, Chiffrat-Dateien (E2).
 Ausnahmen stehen in projekt.toml, Abschnitt [datenwaechter] (erlaube_werte, ignoriere_pfade).
+Kennungen, die einen Eintrag der Pruefliste enthalten muessen (Live-Topics, Entity-IDs, Logins),
+gibt .local/erlaubt.txt frei: je Zeile ein Python-Regex gegen das ganze Token (Buchstaben, Ziffern,
+_ . - / :), ohne Gross-/Kleinschreibung. Lokal, weil die Muster die Namen selbst tragen.
 
 Modi:
   --staged             Index (pre-commit)
@@ -45,7 +48,7 @@ RE_SCHLUESSEL = re.compile(r'-----BEGIN (?:[A-Z]+ )*PRIVATE KEY-----\s*(?:[A-Za-
 
 CHIFFRAT_ENDUNGEN = ('.enc', '.age', '.sbk', '.gpg', '.kdbx', '.p12', '.pfx')
 MAIL_ERLAUBT = re.compile(
-    r'(?i)^(?:noreply@.*|.*@users\.noreply\.github\.com|.*@example\.(?:org|com|net)|.*@localhost'
+    r'(?i)^(?:noreply@.*|.*@users\.noreply\.github\.com|.*@(?:[\w-]+\.)*example\.(?:org|com|net)|.*@localhost'
     r'|.*@(?:[\w-]+\.)*(?:invalid|test|example|localhost)'  # RFC 2606/6761, reserviert
     r'|git@(?:github\.com|gitlab\.com|codeberg\.org))$')
 # Platzhalter und Beispielnutzer in Pfaden
@@ -55,6 +58,8 @@ PFAD_ERLAUBT = {'user', 'username', 'runner', 'ubuntu', 'debian', 'pi', 'root', 
 TAILNET = ipaddress.ip_network('100.64.0.0/10')
 # Ausdruecklich statt ip.is_private: das zaehlt auch Dokunetze (192.0.2.0/24 usw.) mit
 PRIVAT = [ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '169.254.0.0/16')]
+# Zeichen einer Kennung (Topic, Entity-ID, Login, Dateiname) fuer .local/erlaubt.txt
+TOKEN_ZEICHEN = re.compile(r'[\w.\-/:]')
 
 
 def maske(wert: str) -> str:
@@ -76,11 +81,16 @@ class Waechter:
         self.verboten: list[str] = []
         self.erlaube: list[re.Pattern[str]] = []
         self.ignoriere: list[str] = []
+        self.kennungen: list[re.Pattern[str]] = []
         self._lade_konfig()
 
     # -- Konfiguration ---------------------------------------------------------------------------
     def _lade_konfig(self) -> None:
         liste = os.path.join(self.repo, '.local', 'verboten.txt')
+        beispiel = os.path.join(self.repo, 'local.beispiel')
+        if os.path.isdir(beispiel) and os.path.realpath(os.path.join(self.repo, '.local')) == os.path.realpath(beispiel):
+            print('datenwaechter: Hinweis: Beispielzustand (.local -> local.beispiel), nur die Beispiel-Pruefliste; '
+                  'echte Daten aus dem Backup holen und kit/installieren.sh erneut ausfuehren', file=sys.stderr)
         if os.path.isfile(liste):
             with open(liste, encoding='utf-8') as f:
                 self.verboten = [z.strip() for z in f if z.strip() and not z.lstrip().startswith('#')]
@@ -88,6 +98,16 @@ class Waechter:
             raise SystemExit(self._fehler(
                 f'{liste} fehlt (Klasse I, nur lokal + Backup). Anlegen oder aus dem Backup holen; '
                 'nur in der CI mit --ci pruefen.'))
+        # Freigegebene Kennungen (Live-Topics, Entity-IDs, Logins), die einen Eintrag der Pruefliste
+        # enthalten: Python-Regex je Zeile gegen das ganze Token. Lokal, weil sie die Namen tragen.
+        freigabe = os.path.join(self.repo, '.local', 'erlaubt.txt')
+        if os.path.isfile(freigabe):
+            with open(freigabe, encoding='utf-8') as f:
+                zeilen = [z.strip() for z in f if z.strip() and not z.lstrip().startswith('#')]
+            try:
+                self.kennungen = [re.compile(z, re.IGNORECASE) for z in zeilen]
+            except re.error as e:
+                raise SystemExit(self._fehler(f'.local/erlaubt.txt: ungueltiges Muster: {e}'))
         pt = os.path.join(self.repo, 'projekt.toml')
         if os.path.isfile(pt):
             if tomllib is None:
@@ -109,6 +129,17 @@ class Waechter:
     def _erlaubt(self, wert: str) -> bool:
         return any(m.fullmatch(wert) for m in self.erlaube)
 
+    def _kennung_frei(self, text: str, anfang: int, ende: int) -> bool:
+        """Treffer liegt in einem Token, das .local/erlaubt.txt ganz freigibt."""
+        if not self.kennungen:
+            return False
+        while anfang > 0 and TOKEN_ZEICHEN.match(text[anfang - 1]):
+            anfang -= 1
+        while ende < len(text) and TOKEN_ZEICHEN.match(text[ende]):
+            ende += 1
+        token = text[anfang:ende]
+        return any(m.fullmatch(token) for m in self.kennungen)
+
     def _ignoriert(self, pfad: str) -> bool:
         return any(fnmatch.fnmatch(pfad, g) for g in self.ignoriere)
 
@@ -124,7 +155,8 @@ class Waechter:
                 i = klein.find(w, start)
                 if i < 0:
                     break
-                self._fund(self._zeilenort(ort, text, i, ist_pfadname), 'verboten', wort)
+                if not self._kennung_frei(text, i, i + len(w)):
+                    self._fund(self._zeilenort(ort, text, i, ist_pfadname), 'verboten', wort)
                 start = i + len(w)
         for m in RE_IPV4.finditer(text):
             wert, praefix = m.group(1), m.group(2)

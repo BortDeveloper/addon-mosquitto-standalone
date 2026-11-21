@@ -1,2 +1,5 @@
 # Real deploy targets, keys, secrets — stay local.
 .local/
+
+# ADR-0044: Klasse I/G nur lokal + Backup (Ordner oder Link)
+/.local
